@@ -21,6 +21,7 @@ static StString getAbout() {
         + "Usage: sView [options] - file\n"
         + "Available options:\n"
           "  --fullscreen         Open fullscreen\n"
+          "  --fullscreen-openhmd Switch to fullscreen as soon as OpenHMD device is available\n"
           "  --toShowMenu=off     Hide main menu\n"
           "  --toShowTopbar=off   Hide top toolbar\n"
           "  --monitorId=ID       open window on specified monitor\n"
@@ -128,6 +129,8 @@ StHandle<StApplication> StMultiApp::getInstance(const StHandle<StResourceManager
             anAction = "action?DoSrcSideBySide";
         } else if(anActLow == "fullscreen") {
             anAction = "action?DoFullscreen";
+        } else if(anActLow == "fullscreen-openhmd") {
+            anAction = "action?DoFullscreenOpenHMD";
         } else {
             anAction = StString("action?") + anAction;
         }

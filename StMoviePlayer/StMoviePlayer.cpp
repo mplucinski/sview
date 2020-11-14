@@ -432,6 +432,8 @@ StMoviePlayer::StMoviePlayer(const StHandle<StResourceManager>& theResMgr,
     anAction = new StActionBool(stCString("DoFullscreen"), params.IsFullscreen);
     addAction(Action_Fullscreen, anAction, ST_VK_F, ST_VK_RETURN);
 
+//    anAction = new StActionBool(stCString("DoFullscreenOpenHMD"), params.IsFullscreenOpenHMD);
+
     anAction = new StActionBool(stCString("DoShowFPS"), params.ToShowFps);
     addAction(Action_ShowFps, anAction, ST_VK_F12);
 

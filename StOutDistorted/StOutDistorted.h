@@ -13,6 +13,8 @@
 #include <StCore/StWindow.h>
 #include <StGL/StGLVertexBuffer.h>
 #include <StThreads/StFPSControl.h>
+#include <openhmd.h>
+
 
 //#define ST_HAVE_OPENVR
 
@@ -240,7 +242,8 @@ class StOutDistorted : public StWindow {
         DEVICE_AUTO         =-1,
         DEVICE_DISTORTED    = 0, //!< general output
         DEVICE_HMD          = 1, //!< VR HMD
-        DEVICE_S3DV         = 2, //!< S3DV
+        DEVICE_OPENHMD      = 2, //!< OpenHMD
+        DEVICE_S3DV         = 3, //!< S3DV
         DEVICE_NB,
     };
 
@@ -249,6 +252,7 @@ class StOutDistorted : public StWindow {
         LAYOUT_OVER_UNDER_ANAMORPH   = 1, //!< anamorph  over under
         LAYOUT_SIDE_BY_SIDE          = 2, //!< full-size side by side
         LAYOUT_OVER_UNDER            = 3, //!< full-size over under
+        LAYOUT_OVER_UNDER_ROT90      = 4, //!> full-size over under, 90 deg rotated frames
     };
 
     /**
@@ -292,6 +296,7 @@ class StOutDistorted : public StWindow {
     StHandle<StProgramBarrel> myProgramBarrel;
     StFPSControl              myFPSControl;
     StGLVertexBuffer          myFrVertsBuf;      //!< buffers to draw simple fullsreen quad
+    StGLVertexBuffer          myFrVertsBufRot;
     StGLVertexBuffer          myFrTCrdsBuf;
     StGLVertexBuffer          myCurVertsBuf;
     StGLVertexBuffer          myCurTCrdsBuf;
@@ -327,6 +332,8 @@ class StOutDistorted : public StWindow {
     bool                      myIsHdmiPack;      //!< "frame packed" mode in HDMI 1.4a
     bool                      myIsForcedFboUsage;//!< use FBO even when rendering can be done by simple viewport adjustment
 
+    ohmd_context *ohmd_ctx = NULL;
+    ohmd_device *hmd = NULL;
 };
 
 #endif // __StOutDistorted_h_

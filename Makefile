@@ -146,8 +146,8 @@ STRIPFLAGS = --strip-unneeded
 LDSTRIP = -s
 LDZDEF = -z defs
 EXTRA_CFLAGS   =
-EXTRA_CXXFLAGS = -DAPP_PREFIX="\"$(APP_PREFIX)\""
-EXTRA_LDFLAGS  =
+EXTRA_CXXFLAGS = -DAPP_PREFIX="\"$(APP_PREFIX)\"" -I/usr/local/include/openhmd
+EXTRA_LDFLAGS  = 
 ifeq ($(TARGET_OS),osx)
 LDZDEF =
 endif
@@ -565,7 +565,7 @@ clean_StOutPageFlip:
 # StOutDistorted library
 aStOutDistorted_SRCS := $(sort $(wildcard $(SRCDIR)/StOutDistorted/*.cpp))
 aStOutDistorted_OBJS := ${aStOutDistorted_SRCS:.cpp=.o}
-aStOutDistorted_LIB  := $(LIB) -lStShared -lStCore $(LIB_GLX) $(LIB_GTK) $(LIB_PTHREAD)
+aStOutDistorted_LIB  := $(LIB) -lStShared -lStCore $(LIB_GLX) $(LIB_GTK) $(LIB_PTHREAD) /usr/local/lib/x86_64-linux-gnu/libopenhmd.so
 $(aStOutDistorted) : pre_StOutDistorted $(aStCore) $(aStOutDistorted_OBJS)
 	$(LD) -shared $(call libinstname,$@) $(LDFLAGS) $(LIBDIR) $(aStOutDistorted_OBJS) $(aStOutDistorted_LIB) -o $(BUILD_ROOT)/$@
 pre_StOutDistorted:

@@ -27,6 +27,8 @@
 #include <StVersion.h>
 #include <StAV/StAVImage.h>
 
+#include <iomanip>
+
 #ifdef ST_HAVE_OPENVR
     #include <openvr.h>
 
@@ -52,13 +54,16 @@ namespace {
         STTR_OPENVR_DESC        = 1003,
         STTR_S3DV_NAME          = 1004,
         STTR_S3DV_DESC          = 1005,
-
+        STTR_OPENHMD_NAME       = 1006,
+        STTR_OPENHMD_DESC       = 1007,
+  
         // parameters
         STTR_PARAMETER_LAYOUT     = 1110,
         STTR_PARAMETER_LAYOUT_SBS        = 1111,
         STTR_PARAMETER_LAYOUT_OVERUNDER  = 1112,
         STTR_PARAMETER_LAYOUT_SBS_ANAMORPH = 1113,
         STTR_PARAMETER_LAYOUT_OVERUNDER_ANAMORPH = 1114,
+        STTR_PARAMETER_LAYOUT_OVERUNDER_ROT90  = 1115,
         STTR_PARAMETER_DISTORTION = 1120,
         STTR_PARAMETER_DISTORTION_OFF    = 1121,
         STTR_PARAMETER_MONOCLONE         = 1123,
@@ -135,6 +140,7 @@ const char* StOutDistorted::getDeviceId() const {
     switch(myDevice) {
         case DEVICE_HMD:       return "OpenVR";
         case DEVICE_S3DV:      return "S3DV";
+        case DEVICE_OPENHMD:   return "OpenHMD";
         case DEVICE_DISTORTED:
         default:               return "Distorted";
     }
@@ -150,6 +156,11 @@ bool StOutDistorted::setDevice(const StString& theDevice) {
             myToResetDevice = true;
         }
         myDevice = DEVICE_HMD;
+    } else if(theDevice == "OpenHMD") {
+        if(myDevice != DEVICE_OPENHMD) {
+            myToResetDevice = true;
+        }
+        myDevice = DEVICE_OPENHMD;
     } else if(theDevice == "S3DV") {
         if(myDevice != DEVICE_S3DV) {
             myToResetDevice = true;
@@ -187,6 +198,8 @@ void StOutDistorted::updateStrings() {
     myDevices[DEVICE_DISTORTED]->Desc = aLangMap.changeValueId(STTR_DISTORTED_DESC, "Distorted Output");
     myDevices[DEVICE_HMD]->Name       = aLangMap.changeValueId(STTR_OPENVR_NAME,    "OpenVR HMD");
     myDevices[DEVICE_HMD]->Desc       = aLangMap.changeValueId(STTR_OPENVR_DESC,    "Distorted Output");
+    myDevices[DEVICE_OPENHMD]->Name   = aLangMap.changeValueId(STTR_OPENHMD_NAME,   "OpenHMD");
+    myDevices[DEVICE_OPENHMD]->Desc   = aLangMap.changeValueId(STTR_OPENHMD_DESC,    "Distorted Output");
     if(myDevices.size() > DEVICE_S3DV) {
         myDevices[DEVICE_S3DV] ->Name = "S3DV";             //aLangMap.changeValueId(STTR_S3DV_NAME, "S3DV");
         myDevices[DEVICE_S3DV] ->Desc = "Distorted Output"; //aLangMap.changeValueId(STTR_S3DV_DESC, "Distorted Output");
@@ -199,6 +212,7 @@ void StOutDistorted::updateStrings() {
     params.Layout->defineOption(LAYOUT_OVER_UNDER_ANAMORPH,   aLangMap.changeValueId(STTR_PARAMETER_LAYOUT_OVERUNDER_ANAMORPH, "Top-and-Bottom (Anamorph)"));
     params.Layout->defineOption(LAYOUT_SIDE_BY_SIDE,          aLangMap.changeValueId(STTR_PARAMETER_LAYOUT_SBS,                "Side-by-Side"));
     params.Layout->defineOption(LAYOUT_OVER_UNDER,            aLangMap.changeValueId(STTR_PARAMETER_LAYOUT_OVERUNDER,          "Top-and-Bottom") + (myCanHdmiPack ? " [HDMI]" : ""));
+    params.Layout->defineOption(LAYOUT_OVER_UNDER_ROT90,      aLangMap.changeValueId(STTR_PARAMETER_LAYOUT_OVERUNDER_ROT90,    "Top-and-Bottom (rotation 90 deg)"));
 
     // about string
     myAboutTitle     = aLangMap.changeValueId(STTR_PLUGIN_TITLE,   "sView - Distorted Output module");
@@ -261,6 +275,7 @@ StOutDistorted::StOutDistorted(const StHandle<StResourceManager>& theResMgr,
     int aSupportOpenVr   = ST_DEVICE_SUPPORT_NONE;
     int aSupportParallel = ST_DEVICE_SUPPORT_NONE;
     int aSupportS3DV     = ST_DEVICE_SUPPORT_NONE;
+    int aSupportOpenHmd  = ST_DEVICE_SUPPORT_HIGHT;
     for(size_t aMonIter = 0; aMonIter < aMonitors.size(); ++aMonIter) {
         const StMonitor& aMon = aMonitors[aMonIter];
         if(aMon.getPnPId().isStartsWith(stCString("OVR"))) {
@@ -311,6 +326,13 @@ StOutDistorted::StOutDistorted(const StHandle<StResourceManager>& theResMgr,
         myDevices.add(aDevS3dv);
     }
 
+    StHandle<StOutDevice> aDevOpenHMD = new StOutDevice();
+    aDevOpenHMD->PluginId = ST_OUT_PLUGIN_NAME;
+    aDevOpenHMD->DeviceId = stCString("OpenHMD");
+    aDevOpenHMD->Priority = aSupportOpenHmd;
+    aDevOpenHMD->Name     = stCString("OpenHMD");
+    myDevices.add(aDevOpenHMD);
+
     // load device settings
     mySettings->loadInt32(ST_SETTING_DEVICE_ID, myDevice);
     if(myDevice == DEVICE_AUTO) {
@@ -359,6 +381,7 @@ void StOutDistorted::releaseResources() {
         myProgramFlat->release(*myContext);
         myProgramBarrel->release(*myContext);
         myFrVertsBuf .release(*myContext);
+        myFrVertsBufRot.release(*myContext);
         myFrTCrdsBuf .release(*myContext);
         myCurVertsBuf.release(*myContext);
         myCurTCrdsBuf.release(*myContext);
@@ -407,6 +430,8 @@ void StOutDistorted::close() {
 }
 
 bool StOutDistorted::create() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     StWindow::show();
     if(!StWindow::create()) {
         return false;
@@ -438,11 +463,24 @@ bool StOutDistorted::create() {
     myProgramBarrel->setupChrome(*myContext, myChromAb);
 
     // create vertices buffers to draw simple textured quad
+    //   C-A
+    //   | |
+    //   D-B
     const GLfloat QUAD_VERTICES[4 * 4] = {
-         1.0f, -1.0f, 0.0f, 1.0f, // top-right
-         1.0f,  1.0f, 0.0f, 1.0f, // bottom-right
-        -1.0f, -1.0f, 0.0f, 1.0f, // top-left
-        -1.0f,  1.0f, 0.0f, 1.0f  // bottom-left
+         1.0f, -1.0f, 0.0f, 1.0f, // A: top-right
+         1.0f,  1.0f, 0.0f, 1.0f, // B: bottom-right
+        -1.0f, -1.0f, 0.0f, 1.0f, // C: top-left
+        -1.0f,  1.0f, 0.0f, 1.0f, // D: bottom-left
+    };
+
+    //   D-C
+    //   | |
+    //   B-A
+    const GLfloat QUAD_VERTICES_ROT[4 * 4] = {
+        -1.0f, -1.0f, 0.0f, 1.0f, // C: top-left
+         1.0f, -1.0f, 0.0f, 1.0f, // A: top-right
+        -1.0f,  1.0f, 0.0f, 1.0f, // D: bottom-left
+         1.0f,  1.0f, 0.0f, 1.0f, // B: bottom-right
     };
 
     const GLfloat QUAD_TEXCOORD[2 * 4] = {
@@ -452,10 +490,11 @@ bool StOutDistorted::create() {
         0.0f, 0.0f
     };
 
-    myFrVertsBuf .init(*myContext, 4, 4, QUAD_VERTICES);
-    myFrTCrdsBuf .init(*myContext, 2, 4, QUAD_TEXCOORD);
-    myCurVertsBuf.init(*myContext, 4, 4, QUAD_VERTICES);
-    myCurTCrdsBuf.init(*myContext, 2, 4, QUAD_TEXCOORD);
+    myFrVertsBuf   .init(*myContext, 4, 4, QUAD_VERTICES);
+    myFrVertsBufRot.init(*myContext, 4, 4, QUAD_VERTICES_ROT);
+    myFrTCrdsBuf   .init(*myContext, 2, 4, QUAD_TEXCOORD);
+    myCurVertsBuf  .init(*myContext, 4, 4, QUAD_VERTICES);
+    myCurTCrdsBuf  .init(*myContext, 2, 4, QUAD_TEXCOORD);
 
     // cursor texture
     {
@@ -532,6 +571,40 @@ bool StOutDistorted::create() {
         }
     }
 
+    if(myDevice == DEVICE_OPENHMD) {
+        std::cout << "OpenHMD: Create context" << std::endl;
+        ohmd_ctx = ohmd_ctx_create();
+
+        int num_devices = ohmd_ctx_probe(ohmd_ctx);
+        if(num_devices < 0){
+            myMsgQueue->pushError(StString("Failed to probe OpenHMD devices: ") + ohmd_ctx_get_error(ohmd_ctx));
+            myIsBroken = true;
+            return true;
+        }
+
+        ohmd_device_settings *settings = ohmd_device_settings_create(ohmd_ctx);
+
+        int auto_update = 1;
+        ohmd_device_settings_seti(settings, OHMD_IDS_AUTOMATIC_UPDATE, &auto_update);
+
+        hmd = ohmd_list_open_device_s(ohmd_ctx, 0, settings);
+        if(!hmd) {
+            myMsgQueue->pushError(StString("Failed to open OpenHMD device: ") + ohmd_ctx_get_error(ohmd_ctx));
+            myIsBroken = true;
+            return true;
+        }
+
+        int hmd_w, hmd_h;
+        ohmd_device_geti(hmd, OHMD_SCREEN_HORIZONTAL_RESOLUTION, &hmd_w);
+        ohmd_device_geti(hmd, OHMD_SCREEN_VERTICAL_RESOLUTION, &hmd_h);
+
+        std::cout << "OpenHMD: Resolution " << hmd_w << " x " << hmd_h << std::endl;
+
+        ohmd_device_settings_destroy(settings);
+
+    }
+
+
     return true;
 }
 
@@ -601,6 +674,9 @@ void StOutDistorted::processEvents() {
         }
     }
 #endif
+
+    if(myDevice == DEVICE_OPENHMD)
+        ohmd_ctx_update(ohmd_ctx);
 }
 
 void StOutDistorted::showCursor(const bool theToShow) {
@@ -667,6 +743,7 @@ void StOutDistorted::stglDrawCursor(const StPointD_t&  theCursorPos,
                 break;
             case LAYOUT_SIDE_BY_SIDE:
             case LAYOUT_OVER_UNDER:
+            case LAYOUT_OVER_UNDER_ROT90:
                 break;
         }
     }
@@ -702,6 +779,10 @@ bool StOutDistorted::hasOrientationSensor() const {
         return true;
     }
 #endif
+
+    if(myDevice == DEVICE_OPENHMD)
+        return true;
+
     return StWindow::hasOrientationSensor();
 }
 
@@ -726,6 +807,10 @@ void StOutDistorted::setTrackOrientation(const bool theToTrack) {
     StWindow::setTrackOrientation(theToTrack);
 }
 
+static double rad2deg(const double rad) {
+    return rad * (180.0 / M_PI);
+}
+
 StQuaternion<double> StOutDistorted::getDeviceOrientation() const {
     if(myVrTrackOrient
     && !myIsBroken) {
@@ -735,6 +820,62 @@ StQuaternion<double> StOutDistorted::getDeviceOrientation() const {
         }
     #endif
     }
+
+    if(myDevice == DEVICE_OPENHMD) {
+        float quat[4];
+        ohmd_device_getf(hmd, OHMD_ROTATION_QUAT, quat);
+
+        float x = quat[0];
+        float y = quat[1];
+        float z = quat[2];
+        float w = quat[3];
+
+//        std::cout << "orientation received: " <<quat[0]<<" "<<quat[1]<<" "<<quat[2]<<" "<<quat[3]<<std::endl;
+
+        // extract Euler angler
+        double yaw, pitch, roll;
+
+        // roll (x-axis rotation)
+        double sinr_cosp = 2 * (w * x + y * z);
+        double cosr_cosp = 1 - 2 * (x * x + y * y);
+        roll = std::atan2(sinr_cosp, cosr_cosp);
+
+        // pitch (y-axis rotation)
+        double sinp = 2 * (w * y - z * x);
+        if (std::abs(sinp) >= 1)
+            pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+        else
+            pitch = std::asin(sinp);
+
+        // yaw (z-axis rotation)
+        double siny_cosp = 2 * (w * z + x * y);
+        double cosy_cosp = 1 - 2 * (y * y + z * z);
+        yaw = std::atan2(siny_cosp, cosy_cosp);
+
+        std::cout << "orientation received:   " 
+            << std::fixed << std::setprecision(2) << std::setw(8)
+            << rad2deg(yaw) << "   " << rad2deg(pitch) << "   " << rad2deg(roll) << std::endl;
+
+
+
+        StQuaternion<double> rot{x, y, z, -w};
+
+//        StQuaternion<double> offZ{StVec3<double>{0, 0, 1}, M_PI};
+
+//        StQuaternion<double> off2{StVec3<double>{1, 0, 0}, M_PI/2};
+
+/*        StQuaternion<double> off3{StVec3<double>{0, 0, 1}, M_PI/2}; 
+
+        auto off12 = StQuaternion<double>::multiply(off1, off2);
+        auto off123 = StQuaternion<double>::multiply(off12, off3);
+*/
+
+//        rot = StQuaternion<double>::multiply(rot, off2);
+//        rot = StQuaternion<double>::multiply(rot, offZ);
+
+        return rot;
+    }
+
     return StWindow::getDeviceOrientation();
 }
 
@@ -937,15 +1078,18 @@ void StOutDistorted::stglDraw() {
 
     StWinSplit aWinSplit = StWinSlave_splitOff;
     const Layout aPairLayout = getPairLayout();
+    const bool rotate = (aPairLayout == LAYOUT_OVER_UNDER_ROT90);
+
     if(myIsStereoOn
     && (myDevice == DEVICE_HMD
      || aPairLayout == LAYOUT_SIDE_BY_SIDE
-     || aPairLayout == LAYOUT_OVER_UNDER)) {
-        aWinSplit = aPairLayout == LAYOUT_OVER_UNDER && myDevice != DEVICE_HMD
+     || aPairLayout == LAYOUT_OVER_UNDER
+     || aPairLayout == LAYOUT_OVER_UNDER_ROT90)) {
+        aWinSplit = (aPairLayout == LAYOUT_OVER_UNDER || aPairLayout == LAYOUT_OVER_UNDER_ROT90) && myDevice != DEVICE_HMD
                   ? StWinSlave_splitVertical
                   : StWinSlave_splitHorizontal;
         if(myDevice != DEVICE_HMD
-        && aPairLayout == LAYOUT_OVER_UNDER
+        && (aPairLayout == LAYOUT_OVER_UNDER || aPairLayout == LAYOUT_OVER_UNDER_ROT90)
         && myIsHdmiPack) {
             // detect special HDMI 3D modes
             const StRectI_t aRect = StWindow::getPlacement();
@@ -1015,7 +1159,8 @@ void StOutDistorted::stglDraw() {
                 break;
             }
             case LAYOUT_SIDE_BY_SIDE:
-            case LAYOUT_OVER_UNDER: {
+            case LAYOUT_OVER_UNDER:
+            case LAYOUT_OVER_UNDER_ROT90: {
                 break;
             }
         }
@@ -1023,6 +1168,7 @@ void StOutDistorted::stglDraw() {
 
     // simple rendering without FBO
     if(myDevice != DEVICE_HMD
+    && myDevice != DEVICE_OPENHMD
     && !myIsForcedFboUsage) {
         myContext->stglResizeViewport(aVPBoth);
         myContext->stglSetScissorRect(aVPBoth, false);
@@ -1105,13 +1251,19 @@ void StOutDistorted::stglDraw() {
         myProgramBarrel->setLensCenter(*myContext, StGLVec2((0.5f + aLensDisp) * aDX, 0.5f * aDY));
     }
     aProgram->use(*myContext);
-        myFrVertsBuf.bindVertexAttrib(*myContext, aVertexLoc);
+        if(!rotate)
+            myFrVertsBuf.bindVertexAttrib(*myContext, aVertexLoc);
+        else
+            myFrVertsBufRot.bindVertexAttrib(*myContext, aVertexLoc);
         myFrTCrdsBuf.bindVertexAttrib(*myContext, aTexCrdLoc);
 
         myContext->core20fwd->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         myFrTCrdsBuf.unBindVertexAttrib(*myContext, aTexCrdLoc);
-        myFrVertsBuf.unBindVertexAttrib(*myContext, aVertexLoc);
+        if(!rotate)
+            myFrVertsBuf.unBindVertexAttrib(*myContext, aVertexLoc);
+        else
+            myFrVertsBufRot.unBindVertexAttrib(*myContext, aVertexLoc);
     aProgram->unuse(*myContext);
     myFrBuffer->unbindTexture(*myContext);
     myContext->stglResetScissorRect();
@@ -1131,13 +1283,19 @@ void StOutDistorted::stglDraw() {
         myProgramBarrel->setLensCenter(*myContext, StGLVec2((0.5f - aLensDisp) * aDX, 0.5f * aDY));
     }
     aProgram->use(*myContext);
-    myFrVertsBuf.bindVertexAttrib(*myContext, aVertexLoc);
+        if(!rotate)
+            myFrVertsBuf.bindVertexAttrib(*myContext, aVertexLoc);
+        else
+            myFrVertsBufRot.bindVertexAttrib(*myContext, aVertexLoc);
     myFrTCrdsBuf.bindVertexAttrib(*myContext, aTexCrdLoc);
 
     myContext->core20fwd->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     myFrTCrdsBuf.unBindVertexAttrib(*myContext, aTexCrdLoc);
-    myFrVertsBuf.unBindVertexAttrib(*myContext, aVertexLoc);
+        if(!rotate)
+            myFrVertsBuf.unBindVertexAttrib(*myContext, aVertexLoc);
+        else
+            myFrVertsBufRot.unBindVertexAttrib(*myContext, aVertexLoc);
 
     aProgram->unuse(*myContext);
     myFrBuffer->unbindTexture(*myContext);

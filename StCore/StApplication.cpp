@@ -168,6 +168,8 @@ bool StApplication::open(const StOpenInfo& theOpenInfo) {
 }
 
 bool StApplication::open() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     if(!myWindow.isNull()) {
         return true;
     }
@@ -175,6 +177,7 @@ bool StApplication::open() {
     StSettings aGlobalSettings(myResMgr, "sview");
     if(!mySwitchTo.isNull()) {
         myRendId = mySwitchTo->getRendererId();
+        std::cout << "Switching to mySwitchTo " << myRendId << std::endl;
         myWindow = mySwitchTo;
         mySwitchTo.nullify();
         aGlobalSettings.saveString(ST_SETTING_RENDERER,      myRendId);
@@ -190,6 +193,7 @@ bool StApplication::open() {
                 for(size_t anIter = 0; anIter < myRenderers.size(); ++anIter) {
                     StHandle<StWindow> aWin = myRenderers[anIter];
                     if(myRendId == aWin->getRendererId()) {
+                        std::cout << "Switching to renderer " << myRendId << std::endl;
                         myWindow = aWin;
                         aGlobalSettings.saveString(ST_SETTING_RENDERER,      myRendId);
                         aGlobalSettings.saveBool  (ST_SETTING_RENDERER_AUTO, isAuto);
