@@ -196,7 +196,7 @@ class StMoviePlayer : public StApplication {
         StHandle<StBoolParamNamed>    AudioMute;         //!< volume mute flag
         StHandle<StFloat32Param>      AudioDelay;        //!< audio/video synchronization delay
         StHandle<StBoolParamNamed>    IsFullscreen;      //!< fullscreen state
-//        StHandle<StBoolParamNamed>    IsFullscreenOpenHMD; //!< switch to fullscreen as soon as OpenHMD device becomes available
+        StHandle<StBoolParamNamed>    IsFullscreenOpenHMD; //!< switch to fullscreen as soon as OpenHMD device becomes available
         StHandle<StEnumParam>         ExitOnEscape;     //!< exit action on escape
         StHandle<StBoolParamNamed>    ToRestoreRatio;    //!< restore ratio on restart
         StHandle<StBoolParamNamed>    IsShuffle;         //!< shuffle playback order

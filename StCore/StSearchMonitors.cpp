@@ -39,26 +39,34 @@ StSearchMonitors::StSearchMonitors()
 : StArrayList<StMonitor>(2),
   myIsUpdater(false) {
     //
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
 }
 
 StSearchMonitors::~StSearchMonitors() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     if(myIsUpdater) {
         registerUpdater(false);
     }
 }
 
-StMonitor& StSearchMonitors::operator[](const StPointI_t& thePoint) {
+StMonitor& StSearchMonitors::getByPointGlobal(const StPointI_t &thePoint) {
+//    std::cout << "Iterating " << size() << " displays" << std::endl;
     for(size_t id = 0; id < size(); ++id) {
         if(getValue(id).getVRect().isPointIn(thePoint)) {
+//            std::cout << "For point " << thePoint.x() << " x " << thePoint.y() << " found display " << id << std::endl;
             return changeValue(id);
         }
     }
     return changeValue(0); // return first anyway...
 }
 
-const StMonitor& StSearchMonitors::operator[](const StPointI_t& thePoint) const {
+const StMonitor& StSearchMonitors::getByPointGlobal(const StPointI_t &thePoint) const {
+//    std::cout << "Iterating " << size() << " displays" << std::endl;
     for(size_t id = 0; id < size(); ++id) {
         if(getValue(id).getVRect().isPointIn(thePoint)) {
+//            std::cout << "For point " << thePoint.x() << " x " << thePoint.y() << " found display " << id << std::endl;
             return getValue(id);
         }
     }
@@ -355,6 +363,8 @@ namespace {
 };
 
 void StSearchMonitors::findMonitorsXRandr() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     Display* aDisplay = XOpenDisplay(NULL); // get first display on server from DISPLAY in env
     if(aDisplay == NULL) {
         ST_ERROR_LOG("StSearchMonitors, X: could not open display");
@@ -442,6 +452,7 @@ void StSearchMonitors::findMonitorsXRandr() {
         if(aMonitor.getEdid().isValid()) {
             aMonitor.setPnPId(aMonitor.getEdid().getPnPId());
             aMonitor.setName(aMonitor.getEdid().getName());
+            std::cout << "Monitor #" << (uint64_t)anOutput << ": " << aMonitor.getEdid().getName() << std::endl;
         } else {
             aMonitor.setName(anOutputInfo->name);
             ST_ERROR_LOG("EDID from XRandr for Output #" + uint64_t(anOutput) + " ("+ aMonitor.getName() + ") is invalid!");
@@ -469,7 +480,22 @@ void StSearchMonitors::findMonitorsXRandr() {
     }
 
     XRRFreeScreenResources(aScrResources);
-    XCloseDisplay(aDisplay);
+
+    // setup notification if the layout changes
+//    std::cout << "XRRSelectInput(... RRScreenChangeNotifyMask)\n";
+//    XRRSelectInput(aDisplay, aRootWin, RRScreenChangeNotifyMask);
+
+    XCloseDisplay(aDisplay); // TODO: can be closed here, or should happen in destructor?
+
+    std::cout << size() << " displays, triggering callbacks\n";
+
+    for (size_t i = 0; i != size(); ++i) {
+        const auto &aMonitor = getValue(i);
+        const auto it = edidCallbacks.find(aMonitor.getEdid().getName());
+        if(it != edidCallbacks.end())
+            for(auto &callback: it->second)
+                callback(aMonitor);
+    }
 }
 #endif // __linux__
 
@@ -632,6 +658,8 @@ void StSearchMonitors::registerUpdater(const bool theIsUpdater) {
 }
 
 void StSearchMonitors::init(const bool theForced) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     clear();
     StMutexAuto aLock(THE_MON_MUTEX);
 #if !defined(__ANDROID__)
@@ -744,3 +772,20 @@ void StSearchMonitors::initFromSystem() {
     }
 #endif
 }
+
+void StSearchMonitors::notifyOnEdid(const StString &edid, const EdidCallback &callback) {
+    THE_MONS_CACHED.notifyOnEdidGlobal(edid, callback);
+}
+
+void StSearchMonitors::notifyOnEdidGlobal(const StString &edid, const EdidCallback &callback) {
+    edidCallbacks[edid].push_back(callback);
+}
+
+StMonitor& StSearchMonitors::operator[](const StPointI_t& thePoint) {
+    return THE_MONS_CACHED.getByPointGlobal(thePoint);
+}
+
+const StMonitor& StSearchMonitors::operator[](const StPointI_t& thePoint) const {
+    return THE_MONS_CACHED.getByPointGlobal(thePoint);
+}
+

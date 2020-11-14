@@ -77,7 +77,7 @@ class StWindowImpl {
     ST_LOCAL GLfloat getScaleFactor() const {
         return myMonitors[myWinOnMonitorId].getScale();
     }
-    ST_LOCAL const StSearchMonitors& getMonitors() const {
+    ST_LOCAL StSearchMonitors& getMonitors() {
         return myMonitors;
     }
 

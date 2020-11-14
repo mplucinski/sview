@@ -77,6 +77,7 @@ namespace {
     static const char ST_ARGUMENT_FILE_PAUSED[]= "paused";
     static const char ST_ARGUMENT_FILE_SEEK[]  = "seek";
     static const char ST_ARGUMENT_MONITOR[]    = "monitorId";
+    static const char ST_ARGUMENT_FULLSCREEN_OPENHMD[] = "fullscreenOpenHMD";
     static const char ST_ARGUMENT_WINLEFT[]    = "windowLeft";
     static const char ST_ARGUMENT_WINTOP[]     = "windowTop";
     static const char ST_ARGUMENT_WINWIDTH[]   = "windowWidth";
@@ -432,7 +433,7 @@ StMoviePlayer::StMoviePlayer(const StHandle<StResourceManager>& theResMgr,
     anAction = new StActionBool(stCString("DoFullscreen"), params.IsFullscreen);
     addAction(Action_Fullscreen, anAction, ST_VK_F, ST_VK_RETURN);
 
-//    anAction = new StActionBool(stCString("DoFullscreenOpenHMD"), params.IsFullscreenOpenHMD);
+    anAction = new StActionBool(stCString("DoFullscreenOpenHMD"), params.IsFullscreenOpenHMD);
 
     anAction = new StActionBool(stCString("DoShowFPS"), params.ToShowFps);
     addAction(Action_ShowFps, anAction, ST_VK_F12);
@@ -960,6 +961,7 @@ void StMoviePlayer::parseArguments(const StArgumentsMap& theArguments) {
 
     StArgument anArgFullscreen = theArguments[params.IsFullscreen->getKey()];
     StArgument anArgMonitor    = theArguments[ST_ARGUMENT_MONITOR];
+    StArgument anArgFullscreenOpenHMD = theArguments[ST_ARGUMENT_FULLSCREEN_OPENHMD];
     StArgument anArgWinLeft    = theArguments[ST_ARGUMENT_WINLEFT];
     StArgument anArgWinTop     = theArguments[ST_ARGUMENT_WINTOP];
     StArgument anArgWinWidth   = theArguments[ST_ARGUMENT_WINWIDTH];
@@ -977,6 +979,17 @@ void StMoviePlayer::parseArguments(const StArgumentsMap& theArguments) {
             aRect.moveTopTo (aMonNew.getVRect().top()  + aTop);
             toSetRect = true;
         }
+    }
+    if(anArgFullscreenOpenHMD.isValid()) {
+        myWindow->getMonitors().notifyOnEdid(anArgFullscreenOpenHMD.getValue(), [this](const StMonitor &monitor){
+            std::cout << "Monitor appeared: " << monitor.getEdid().getName() << std::endl;
+            std::cout << "   VRect: " << monitor.getVRect().left() << " x " << monitor.getVRect().top() << std::endl;
+
+            StRect<int32_t> aRect = myWindow->getWindowedPlacement();
+            aRect.moveLeftTo(monitor.getVRect().left());
+            aRect.moveTopTo(monitor.getVRect().top());
+            myWindow->setPlacement(aRect, true);
+        });
     }
     if(anArgWinLeft.isValid()) {
         aRect.moveLeftTo(::atol(anArgWinLeft.getValue().toCString()));

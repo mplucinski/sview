@@ -391,6 +391,9 @@ bool StWindowImpl::create() {
 
     // we need this call to go around bugs
     if(!attribs.IsFullScreen && myMaster.hWindow != 0) {
+        std::cout << "XMoveResizeWindow [2] (" << myMaster.getDisplay() << ", " << myMaster.hWindow << ", "
+                          << myRectNorm.left() << ", " << myRectNorm.top() << ", "
+                          << myRectNorm.width() << ", " << myRectNorm.height() << ")" << std::endl;
         XMoveResizeWindow(hDisplay, myMaster.hWindow,
                           myRectNorm.left(),  myRectNorm.top(),
                           myRectNorm.width(), myRectNorm.height());
@@ -494,6 +497,9 @@ void StWindowImpl::setFullScreen(bool theFullscreen) {
 
         if((Window )myParentWin != 0 || myMaster.hWindow != 0) {
             XReparentWindow(hDisplay, myMaster.hWindowGl, myMaster.stXDisplay->getRootWindow(), 0, 0);
+            std::cout << "XMoveResizeWindow [3] (" << hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << aRect.left() << ", " << aRect.top() << ", "
+                              << aRect.width() << ", " << aRect.height() << ")" << std::endl;
             XMoveResizeWindow(hDisplay, myMaster.hWindowGl,
                               aRect.left(),  aRect.top(),
                               aRect.width(), aRect.height());
@@ -501,6 +507,9 @@ void StWindowImpl::setFullScreen(bool theFullscreen) {
             XMapWindow(hDisplay, myMaster.hWindowGl);
             //XIfEvent(hDisplay, &myXEvent, stXWaitMapped, (char* )myMaster.hWindowGl);
         } else {
+            std::cout << "XMoveResizeWindow [4] (" << hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << aRect.left() << ", " << aRect.top() << ", "
+                              << aRect.width() << ", " << aRect.height() << ")" << std::endl;
             XMoveResizeWindow(hDisplay, myMaster.hWindowGl,
                               aRect.left(),  aRect.top(),
                               aRect.width(), aRect.height());
@@ -512,6 +521,9 @@ void StWindowImpl::setFullScreen(bool theFullscreen) {
         if(attribs.Slave != StWinSlave_slaveOff
         && myTiledCfg == TiledCfg_Separate
         && (!isSlaveIndependent() || myMonitors.size() > 1)) {
+            std::cout << "XMoveResizeWindow [5] (" << hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << getSlaveLeft() << ", " << getSlaveTop() << ", "
+                              << getSlaveWidth() << ", " << getSlaveHeight() << ")" << std::endl;
             XMoveResizeWindow(hDisplay, mySlave.hWindowGl,
                               getSlaveLeft(),  getSlaveTop(),
                               getSlaveWidth(), getSlaveHeight());
@@ -574,6 +586,9 @@ void StWindowImpl::setFullScreen(bool theFullscreen) {
                 //XIfEvent(hDisplay, &myXEvent, stXWaitMapped, (char* )mySlave.hWindowGl);
             }
             XFlush(hDisplay);
+            std::cout << "XMoveResizeWindow [6] (" << hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << myRectNorm.left() << ", " << myRectNorm.top() << ", "
+                              << myRectNorm.width() << ", " << myRectNorm.height() << ")" << std::endl;
             XMoveResizeWindow(hDisplay, myMaster.hWindowGl,
                               myRectNorm.left(),  myRectNorm.top(),
                               myRectNorm.width(), myRectNorm.height());
@@ -760,11 +775,17 @@ void StWindowImpl::updateWindowPos() {
             myRectNorm.bottom() = myRectNorm.top() + height;
         }
         if(myMaster.hWindow != 0) {
+            std::cout << "XMoveResizeWindow [7] (" << aDisplay->hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << 0 << ", " << 0 << ", "
+                              << myRectNorm.width() << ", " << myRectNorm.height() << ")" << std::endl;
             XMoveResizeWindow(aDisplay->hDisplay, myMaster.hWindowGl,
                               0, 0,
                               myRectNorm.width(), myRectNorm.height());
         }
         if(attribs.Slave != StWinSlave_slaveOff && (!isSlaveIndependent() || myMonitors.size() > 1)) {
+            std::cout << "XMoveResizeWindow [8] (" << aDisplay->hDisplay << ", " << myMaster.hWindowGl << ", "
+                              << getSlaveLeft() << ", " << getSlaveTop() << ", "
+                              << getSlaveWidth() << ", " << getSlaveHeight() << ")" << std::endl;
             XMoveResizeWindow(aDisplay->hDisplay, mySlave.hWindowGl,
                               getSlaveLeft(),  getSlaveTop(),
                               getSlaveWidth(), getSlaveHeight());
@@ -828,6 +849,9 @@ void StWindowImpl::processEvents() {
     int anEventsNb = XPending(aDisplay->hDisplay);
     for(int anIter = 0; anIter < anEventsNb && XPending(aDisplay->hDisplay) > 0; ++anIter) {
         XNextEvent(aDisplay->hDisplay, &myXEvent);
+
+        std::cout << "X event: type = " << myXEvent.type << std::endl;
+
         switch(myXEvent.type) {
             case ClientMessage: {
                 /*ST_DEBUG_LOG("A ClientMessage has arrived:\n"

@@ -313,7 +313,7 @@ double StWindow::getEventTime(const uint32_t theTime) const {
     return myWin->getEventTime(theTime);
 }
 
-const StSearchMonitors& StWindow::getMonitors() const {
+StSearchMonitors& StWindow::getMonitors() const {
     return myWin->getMonitors();
 }
 

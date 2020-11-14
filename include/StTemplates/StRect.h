@@ -247,6 +247,8 @@ class StRect {
      * @return true if point IN rectangle (or on the rectangle border line).
      */
     bool isPointIn(const StVec2<Element_t>& thePoint) const {
+//        std::cout << "Chcking if point (" << thePoint.x() << ", " << thePoint.y() << ") is in within the rect ("
+//                  << left() << ", " << top() << "; " << right() << ", " << bottom() << ")" << std::endl;
         return thePoint.x() >= left() && thePoint.x() <= right()
             && thePoint.y() >= top()  && thePoint.y() <= bottom();
     }

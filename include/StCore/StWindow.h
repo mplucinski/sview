@@ -501,7 +501,7 @@ class StWindow {
     /**
      * Access list of connected monitors.
      */
-    ST_CPPEXPORT const StSearchMonitors& getMonitors() const;
+    ST_CPPEXPORT StSearchMonitors& getMonitors() const;
 
     /**
      * Check placement of the parent window.

@@ -95,6 +95,9 @@ StWindowImpl::StWindowImpl(const StHandle<StResourceManager>& theResMgr,
   myLastEventsTime(0.0),
   myEventsThreaded(false),
   myIsMouseMoved(false) {
+
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     stMemZero(&attribs, sizeof(attribs));
     stMemZero(&signals, sizeof(signals));
     myStEvent   .Type = stEvent_None;
@@ -232,6 +235,8 @@ void StWindowImpl::updateMonitors() {
 }
 
 StWindowImpl::~StWindowImpl() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     close();
 #ifdef _WIN32
     // restore timer adjustments
@@ -817,6 +822,9 @@ void StWindowImpl::setPlacement(const StRectI_t& ,
 #else
 void StWindowImpl::setPlacement(const StRectI_t& theRect,
                                 const bool       theMoveToScreen) {
+    std::cout << __PRETTY_FUNCTION__ << "((x: " << theRect.left() << ", y: " << theRect.top()
+        << ", w: " << theRect.width() << ", h: " << theRect.height() << "), " << theMoveToScreen << ")" << std::endl;
+
     if(theMoveToScreen) {
         const StPointI_t aCenter = theRect.center();
         const StMonitor& aMon = myMonitors[aCenter];
@@ -855,6 +863,11 @@ void StWindowImpl::setPlacement(const StRectI_t& theRect,
     }
 #elif defined(__linux__)
     if(!myMaster.stXDisplay.isNull() && !attribs.IsFullScreen && myMaster.hWindow != 0) {
+        std::cout << "XMoveResizeWindow [1] (" << myMaster.getDisplay() << ", " << myMaster.hWindow << ", "
+                          << myRectNorm.left() << ", " << myRectNorm.top() << ", "
+                          << myRectNorm.width() << ", " << myRectNorm.height() << ")" << std::endl;
+
+
         XMoveResizeWindow(myMaster.getDisplay(), myMaster.hWindow,
                           myRectNorm.left(),  myRectNorm.top(),
                           myRectNorm.width(), myRectNorm.height());

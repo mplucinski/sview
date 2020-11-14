@@ -53,7 +53,7 @@ BUILD_ROOT_BUNDLE = build/sView.app
 BUILD_ROOT = $(BUILD_ROOT_BUNDLE)/Contents/MacOS
 endif
 
-ST_DEBUG = 0
+ST_DEBUG = 1
 FFMPEG_ROOT =
 FREETYPE_ROOT =
 OPENAL_ROOT =
@@ -167,7 +167,7 @@ endif
 
 # to activate debug build
 ifneq ($(ST_DEBUG),0)
-EXTRA_CXXFLAGS = -DST_DEBUG
+EXTRA_CXXFLAGS := $(EXTRA_CXXFLAGS) -DST_DEBUG
 LDSTRIP =
 STRIPFLAGS = --info
 endif

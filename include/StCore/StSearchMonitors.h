@@ -10,6 +10,10 @@
 #ifndef __StSearchMonitors_h_
 #define __StSearchMonitors_h_
 
+#include <functional>
+#include <map>
+#include <vector>
+
 #include <StCore/StMonitor.h>
 
 #include <StTemplates/StArrayList.h>
@@ -70,6 +74,10 @@ class StSearchMonitors : public StArrayList<StMonitor> {
 
         private:
 
+    StMonitor& getByPointGlobal(const StPointI_t &thePoint);
+    const StMonitor& getByPointGlobal(const StPointI_t &thePoint) const;
+
+
     /**
      * Just try to compute displays' configuration from known summary resolution
      */
@@ -110,9 +118,19 @@ class StSearchMonitors : public StArrayList<StMonitor> {
      */
     ST_CPPEXPORT void registerUpdater(const bool theIsUpdater);
 
+    using EdidCallback = std::function<void(const StMonitor &)>;
+
+    ST_CPPEXPORT void notifyOnEdid(const StString &edid, const EdidCallback &callback);
+
+        private:
+
+    ST_CPPEXPORT void notifyOnEdidGlobal(const StString &edid, const EdidCallback &callback);
+
         protected:
 
     bool myIsUpdater; //!< flag indicating updating listener
+
+    std::map<StString, std::vector<EdidCallback>> edidCallbacks;
 
 };
 

@@ -852,9 +852,9 @@ StQuaternion<double> StOutDistorted::getDeviceOrientation() const {
         double cosy_cosp = 1 - 2 * (y * y + z * z);
         yaw = std::atan2(siny_cosp, cosy_cosp);
 
-        std::cout << "orientation received:   " 
-            << std::fixed << std::setprecision(2) << std::setw(8)
-            << rad2deg(yaw) << "   " << rad2deg(pitch) << "   " << rad2deg(roll) << std::endl;
+//        std::cout << "orientation received:   " 
+//            << std::fixed << std::setprecision(2) << std::setw(8)
+//            << rad2deg(yaw) << "   " << rad2deg(pitch) << "   " << rad2deg(roll) << std::endl;
 
 
 
