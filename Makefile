@@ -244,9 +244,9 @@ endif
 INC =  -I$(SRCDIR)/3rdparty/include -I$(SRCDIR)/include
 CFLAGS   = -fPIC $(HAVE_MONGOOSE) $(INC) $(EXTRA_CFLAGS)
 ifneq ($(ST_DEBUG),0)
-CXXFLAGS = -g -std=c++0x -Wall -fPIC $(HAVE_MONGOOSE) $(INC) $(EXTRA_CXXFLAGS)
+CXXFLAGS = -g -std=c++17 -Wall -fPIC $(HAVE_MONGOOSE) $(INC) $(EXTRA_CXXFLAGS)
 else
-CXXFLAGS = -O3 -std=c++0x -Wall -fPIC $(HAVE_MONGOOSE) $(INC) $(EXTRA_CXXFLAGS)
+CXXFLAGS = -O3 -std=c++17 -Wall -fPIC $(HAVE_MONGOOSE) $(INC) $(EXTRA_CXXFLAGS)
 endif
 LIBDIR = -L$(BUILD_ROOT)
 LIB =
@@ -611,7 +611,7 @@ aStMoviePlayer_SRCS2 := $(sort $(wildcard $(SRCDIR)/StMoviePlayer/StVideo/*.cpp)
 aStMoviePlayer_OBJS2 := ${aStMoviePlayer_SRCS2:.cpp=.o}
 aStMoviePlayer_SRCS3 := $(sort $(wildcard $(SRCDIR)/StMoviePlayer/*.c))
 aStMoviePlayer_OBJS3 := ${aStMoviePlayer_SRCS3:.c=.o}
-aStMoviePlayer_LIB   := $(LIB) -lStGLWidgets -lStShared -lStCore $(LIB_OUTPUTS) $(LIB_GLX) $(LIB_GTK) -lavutil -lavformat -lavcodec -lswscale $(LIB_OPENAL) $(LIB_COREVIDEO) $(LIB_PTHREAD)
+aStMoviePlayer_LIB   := $(LIB) -lStGLWidgets -lStShared -lStCore $(LIB_OUTPUTS) $(LIB_GLX) $(LIB_GTK) -lavutil -lavformat -lavcodec -lswscale /usr/lib/x86_64-linux-gnu/libcjson.so $(LIB_OPENAL) $(LIB_COREVIDEO) $(LIB_PTHREAD)
 $(aStMoviePlayer) : pre_StMoviePlayer $(aStGLWidgets) outputs_all $(aStMoviePlayer_OBJS1) $(aStMoviePlayer_OBJS2) $(aStMoviePlayer_OBJS3)
 	$(LD) -shared $(call libinstname,$@) $(LDFLAGS) $(LIBDIR) $(aStMoviePlayer_OBJS1) $(aStMoviePlayer_OBJS2) $(aStMoviePlayer_OBJS3) $(aStMoviePlayer_LIB) -o $(BUILD_ROOT)/$@
 pre_StMoviePlayer:

@@ -72,6 +72,8 @@ namespace {
     static const StGLVec3 aGreen (0.0f, 0.6f, 0.4f);
     static const StGLVec3 aRed   (1.0f, 0.0f, 0.0f);
 
+    static const int panelsOffsetX = 200;
+    static const int panelsOffsetY = 200;
 }
 
 void StMoviePlayerGUI::createDesktopUI(const StHandle<StPlayList>& thePlayList) {
@@ -998,6 +1000,8 @@ class ST_LOCAL StInfoDialog : public StGLMessageBox {
 };
 
 void StMoviePlayerGUI::doAboutFile(const size_t ) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     StHandle<StMovieInfo>& anExtraInfo = myPlugin->myFileInfo;
     anExtraInfo.nullify();
 
@@ -1661,6 +1665,9 @@ StMoviePlayerGUI::StMoviePlayerGUI(StMoviePlayer*  thePlugin,
   myIconStep(64),
   myBottomBarNbLeft(0),
   myBottomBarNbRight(0) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
+
     const GLfloat aScale = myPlugin->params.ScaleHiDPI2X->getValue() ? 2.0f : myPlugin->params.ScaleHiDPI ->getValue();
     setScale(aScale, (StGLRootWidget::ScaleAdjust )myPlugin->params.ScaleAdjust->getValue());
     setMobile(myPlugin->params.IsMobileUISwitch->getValue());
@@ -1777,14 +1784,14 @@ void StMoviePlayerGUI::stglResize(const StGLBoxPx& theViewPort,
     myImage->changeRectPx().right()  = -theMargins.left + aNewSizeX;
 
     if(myPanelUpper != NULL) {
-        myPanelUpper->changeRectPx().top()   = aGapTopY;
-        myPanelUpper->changeRectPx().left()  = aGapTopX;
-        myPanelUpper->changeRectPx().right() = aGapTopX + stMax(aNewSizeX - theMargins.right - theMargins.left - 2 * aGapTopX, 2);
+        myPanelUpper->changeRectPx().top()   = aGapTopY+panelsOffsetY;
+        myPanelUpper->changeRectPx().left()  = aGapTopX+panelsOffsetX;
+        myPanelUpper->changeRectPx().right() = aGapTopX + stMax(aNewSizeX - theMargins.right - theMargins.left - 2 * aGapTopX, 2) - panelsOffsetX;
     }
     if(myPanelBottom != NULL) {
-        myPanelBottom->changeRectPx().top()   = -aGapBotY;
-        myPanelBottom->changeRectPx().left()  = aGapBotX;
-        myPanelBottom->changeRectPx().right() = aGapBotX + stMax(aNewSizeX - theMargins.right - theMargins.left - 2 * aGapBotX, 2);
+        myPanelBottom->changeRectPx().top()   = -aGapBotY-panelsOffsetY;
+        myPanelBottom->changeRectPx().left()  = aGapBotX+panelsOffsetX;
+        myPanelBottom->changeRectPx().right() = aGapBotX + stMax(aNewSizeX - theMargins.right - theMargins.left - 2 * aGapBotX, 2) - panelsOffsetX;
     }
 
     stglResizeSeekBar();

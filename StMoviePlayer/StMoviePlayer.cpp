@@ -433,8 +433,6 @@ StMoviePlayer::StMoviePlayer(const StHandle<StResourceManager>& theResMgr,
     anAction = new StActionBool(stCString("DoFullscreen"), params.IsFullscreen);
     addAction(Action_Fullscreen, anAction, ST_VK_F, ST_VK_RETURN);
 
-    anAction = new StActionBool(stCString("DoFullscreenOpenHMD"), params.IsFullscreenOpenHMD);
-
     anAction = new StActionBool(stCString("DoShowFPS"), params.ToShowFps);
     addAction(Action_ShowFps, anAction, ST_VK_F12);
 
@@ -985,10 +983,15 @@ void StMoviePlayer::parseArguments(const StArgumentsMap& theArguments) {
             std::cout << "Monitor appeared: " << monitor.getEdid().getName() << std::endl;
             std::cout << "   VRect: " << monitor.getVRect().left() << " x " << monitor.getVRect().top() << std::endl;
 
-            StRect<int32_t> aRect = myWindow->getWindowedPlacement();
-            aRect.moveLeftTo(monitor.getVRect().left());
-            aRect.moveTopTo(monitor.getVRect().top());
+            StRect<int32_t> aRect{
+                monitor.getVRect().top(),
+                monitor.getVRect().bottom(),
+                monitor.getVRect().left()-1,
+                monitor.getVRect().right()-1,
+            };
+
             myWindow->setPlacement(aRect, true);
+            params.IsFullscreen->setValue(true);
         });
     }
     if(anArgWinLeft.isValid()) {
@@ -1523,6 +1526,21 @@ void StMoviePlayer::beforeDraw() {
         return;
     }
 
+    if(checkViewSurfacePreselection) {
+        if(myVideo->ReadyViewSurfacePreselection) {
+            if (!myVideo->HasViewSurfacePreselection)
+                std::cout << "!!! ViewSurfacePreselection: <nullopt>" << std::endl;
+            else {
+                std::cout << "!!! ViewSurfacePreselection: " << myVideo->ViewSurfacePreselection << std::endl;
+                myGUI->myImage->params.ViewMode->setValue(myVideo->ViewSurfacePreselection);
+            }
+
+            myVideo->ReadyViewSurfacePreselection = false;
+            checkViewSurfacePreselection = false;
+        } else
+            std::cout << "Not yet ready\n";
+    }
+
     if(myVideo->isDisconnected() || myToUpdateALList) {
         const StString aPrevDev = params.AudioAlDevice->getUtfTitle();
         params.AudioAlDevice->initList();
@@ -1895,6 +1913,8 @@ void StMoviePlayer::doUpdateStateLoaded() {
         params.SubtitlesStream->setValue(mySubsOnLoad);
         mySubsOnLoad = -1;
     }
+
+    checkViewSurfacePreselection = true;
 }
 
 void StMoviePlayer::doAboutFile(const size_t ) {
@@ -2025,6 +2045,7 @@ void StMoviePlayer::doListPrev(const size_t ) {
 
 void StMoviePlayer::doListNext(const size_t ) {
     if(myPlayList->walkToNext()) {
+        std::cout << "## walkToNext -> true\n";
         myVideo->doLoadNext();
         doUpdateStateLoading();
     }

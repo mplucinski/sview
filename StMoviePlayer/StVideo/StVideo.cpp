@@ -25,6 +25,11 @@
 #include <StStrings/StFormatTime.h>
 #include <StAV/StAVIOJniHttpContext.h>
 
+#include <fstream>
+#include <vector>
+
+#include <cjson/cJSON.h>
+
 using namespace StMoviePlayerStrings;
 
 namespace {
@@ -129,6 +134,8 @@ StVideo::StVideo(const std::string&                 theALDeviceName,
   toSave(StImageFile::ST_TYPE_NONE),
   toQuit(false),
   myQuitEvent(false) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     // initialize FFmpeg library if not yet performed
     stAV::init();
 
@@ -238,6 +245,8 @@ void StVideo::startDestruction() {
 }
 
 StVideo::~StVideo() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+
     // stop the thread
     startDestruction();
 
@@ -566,6 +575,8 @@ bool StVideo::addFile(const StString& theFileToLoad,
     return true;
 }
 
+static void *preselect_th(void*);
+
 bool StVideo::openSource(const StHandle<StFileNode>&     theNewSource,
                          const StHandle<StStereoParams>& theNewParams,
                          const StHandle<StFileNode>&     theNewPlsFile) {
@@ -581,6 +592,7 @@ bool StVideo::openSource(const StHandle<StFileNode>&     theNewSource,
     myAudio->setTrackHeadOrientation(false);
 
     myFileInfoTmp = new StMovieInfo();
+    std::cout << __PRETTY_FUNCTION__ << ": myFileInfoTmp assigned; myFileInfoTmp.isNull() = " << myFileInfoTmp.isNull() << std::endl;
 
     StStreamsInfo aStreamsInfo;
     aStreamsInfo.AudioList    = new StArrayList<StString>(8);
@@ -705,10 +717,89 @@ bool StVideo::openSource(const StHandle<StFileNode>&     theNewSource,
 
     myEventMutex.lock();
         myDuration = aStreamsInfo.Duration;
+        std::cout << __PRETTY_FUNCTION__ << ": myFileInfo assign from myFileInfoTmp; myFileInfoTmp.isNull() = " << myFileInfoTmp.isNull() << std::endl;
         myFileInfo = myFileInfoTmp;
     myEventMutex.unlock();
 
+    // TRICK: somehow if we send this information right now, it gets overwritten. So we wait 1s in a thread and only then do that
+    StThread th(preselect_th, this, "ViewSurfacePreselection");
+    th.detach(); 
+
+    std::cout << __PRETTY_FUNCTION__ << ": EXIT, myFileInfo.isNull() = " << myFileInfo.isNull() << "\n";
     return true;
+}
+
+static void* preselect_th(void* ptr) {
+    StVideo *self = (StVideo*)ptr;
+
+    StFileNode jsonFile{self->myCurrNode->getPath() + ".json"};
+    if (StFileNode::isFileExists(jsonFile.getPath())) {
+        std::cout << "READING: " << jsonFile.getPath() << std::endl;
+
+        std::ifstream file{jsonFile.getPath().toCString(), std::ios::binary};
+        file.seekg(0, std::ios::end);
+        auto size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        std::vector<char> buffer(size+1);
+        if (file.read(buffer.data(), size)) {
+            buffer[size] = 0;
+            auto json = cJSON_Parse(buffer.data());
+            if (json != NULL) {
+                std::cout << "Read JSON: " << cJSON_Print(json);
+
+                cJSON *viewSurface = cJSON_GetObjectItemCaseSensitive(json, "ViewSurface");
+                if (viewSurface && cJSON_IsString(viewSurface) && viewSurface->valuestring != NULL) {
+                    std::cout << "ViewSurface from JSON: " << viewSurface->valuestring << std::endl;
+
+                    StViewSurface s;
+                    bool found = false;
+
+                    if (strcmp(viewSurface->valuestring, "Plain")==0) {
+                        s = StViewSurface_Plain;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "Theater")==0) {
+                        s = StViewSurface_Theater;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "Cubemap")==0) {
+                        s = StViewSurface_Cubemap;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "Sphere")==0) {
+                        s = StViewSurface_Sphere;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "Hemisphere")==0) {
+                        s = StViewSurface_Hemisphere;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "Cylinder")==0) {
+                        s = StViewSurface_Cylinder;
+                        found = true;
+                    } else if (strcmp(viewSurface->valuestring, "CubemapEAC")==0) {
+                        s = StViewSurface_CubemapEAC;
+                        found = true;
+                    } else {
+                        std::cout << "Unknown value of ViewSurface: " << viewSurface->valuestring << std::endl;
+                    }
+
+                    if (found) {
+                        std::cout << "Found valid ViewSurface\n";
+                        StThread::sleep(1000);
+                        self->ViewSurfacePreselection = s;
+                        self->HasViewSurfacePreselection = true;
+                        self->ReadyViewSurfacePreselection = true;
+                    }
+                } else {
+                    std::cout << "Could not find ViewSurface key in JSON or wrong type, ignoring\n";
+                }
+            } else {
+                std::cout << "Could not parse JSON, ignoring\n";
+            }
+        } else {
+            std::cout << "Could not read JSON, ignoring\n";
+        }
+    } else {
+        std::cout << "No JSON config for this video, not doing anything more\n";
+    }
+    return 0;
 }
 
 void StVideo::doFlush() {
@@ -890,6 +981,8 @@ void StVideo::checkInitVideoStreams() {
 }
 
 void StVideo::packetsLoop() {
+    std::cout << __PRETTY_FUNCTION__ << ": ENTER; myPlayEvent = " << playEvent2str(myPlayEvent) << std::endl;
+
 #ifdef ST_DEBUG
     double aPtsbar  = 10.0;
 #endif
@@ -1020,6 +1113,7 @@ void StVideo::packetsLoop() {
 
         aPlayEvent = popPlayEvent(aSeekPts, toSeekBack);
         if(aPlayEvent == ST_PLAYEVENT_NEXT || toQuit) {
+            std::cout << "ST_PLAYEVENT_NEXT (1)\n";
             if(toSave != StImageFile::ST_TYPE_NONE) {
                 // save snapshot
                 StImageFile::ImageType anImgType = toSave;
@@ -1046,6 +1140,7 @@ void StVideo::packetsLoop() {
                     myAudio->pushPlayEvent(ST_PLAYEVENT_SEEK, 0.0);
                 }
                 // resend event after it was pop out
+                std::cout << "Resending ST_PLAYEVENT_NEXT\n";
                 pushPlayEvent(ST_PLAYEVENT_NEXT);
                 break;
             }
@@ -1193,6 +1288,7 @@ void StVideo::packetsLoop() {
                || !mySubtitles->isEmpty()   || !mySubtitles->isInDowntime()) {
                 StThread::sleep(10);
                 if(!areFlushed && (popPlayEvent(aSeekPts, toSeekBack) == ST_PLAYEVENT_NEXT)) {
+                    std::cout << "ST_PLAYEVENT_NEXT (2)\n";
                     isPendingPlayNext = true;
                     doFlush();
                     if(myAudio->isInitialized()) {
@@ -1208,6 +1304,7 @@ void StVideo::packetsLoop() {
                     while(myAudio->stalIsAudioPlaying()) {
                         StThread::sleep(10);
                         if(!areFlushed && (popPlayEvent(aSeekPts, toSeekBack) == ST_PLAYEVENT_NEXT)) {
+                            std::cout << "ST_PLAYEVENT_NEXT (3)\n";
                             isPendingPlayNext = true;
                             doFlush();
                             if(myAudio->isInitialized()) {
@@ -1224,6 +1321,7 @@ void StVideo::packetsLoop() {
                     while(aDelayTimer.getElapsedTimeInSec() < (double )params.SlideShowDelay->getValue()) {
                         StThread::sleep(10);
                         if((popPlayEvent(aSeekPts, toSeekBack) == ST_PLAYEVENT_NEXT)) {
+                            std::cout << "ST_PLAYEVENT_NEXT (4)\n";
                             isPendingPlayNext = true;
                             break;
                         }
@@ -1261,6 +1359,8 @@ void StVideo::packetsLoop() {
        || !mySubtitles->isEmpty()   || !mySubtitles->isInDowntime()) {
         StThread::sleep(10);
     }
+
+    std::cout << __PRETTY_FUNCTION__ << ": EXIT; myPlayEvent = " << playEvent2str(myPlayEvent) << std::endl;
 }
 
 bool StVideo::saveSnapshotAs(StImageFile::ImageType theImgType) {
@@ -1358,8 +1458,10 @@ bool StVideo::saveSnapshotAs(StImageFile::ImageType theImgType) {
 StHandle<StMovieInfo> StVideo::getFileInfo(const StHandle<StStereoParams>& theParams) const {
     myEventMutex.lock();
     StHandle<StMovieInfo> anInfo = myFileInfo;
+    std::cout << __PRETTY_FUNCTION__ << ": myFileInfo.isNull() = " << myFileInfo.isNull() << std::endl;
     myEventMutex.unlock();
     if(anInfo.isNull() || anInfo->Id != theParams) {
+        std::cout << "### anInfo.isNull() = " << anInfo.isNull() << std::endl;
         return NULL;
     }
 
@@ -1367,6 +1469,9 @@ StHandle<StMovieInfo> StVideo::getFileInfo(const StHandle<StStereoParams>& thePa
     anInfo->StInfoStream   = myVideoMaster->getStereoFormatFromStream();
     anInfo->StInfoFileName = myVideoMaster->getStereoFormatFromName();
     anInfo->HasVideo  = myVideoMaster->isInitialized();
+
+//    anInfo->HasViewSurfacePreselection = true;
+//    anInfo->ViewSurfacePreselection = StViewSurface_CubemapEAC/* TODO: read from JSON*/;
 
     anInfo->Codecs.clear();
     anInfo->Codecs.add(StArgument("vcodec1",   myVideoMaster->getCodecInfo()));
@@ -1398,6 +1503,8 @@ void StVideo::doRemovePhysically(const StHandle<StFileNode>& theFile) {
 }
 
 void StVideo::mainLoop() {
+    std::cout << __PRETTY_FUNCTION__ << ": ENTER\n";
+
     bool isOpenSuccess = false;
     StHandle<StFileNode> aFileToLoad, aPlsFile;
     StHandle<StStereoParams> aFileParams;
@@ -1464,6 +1571,7 @@ void StVideo::mainLoop() {
 
         for(;;) {
             if(popPlayEvent(aDummy, aDummyBool) != ST_PLAYEVENT_NEXT) {
+                std::cout << __PRETTY_FUNCTION__ << ": myPlayList->walkToNext(false)" << std::endl;
                 myPlayList->walkToNext(false);
             }
             if(toQuit) {
@@ -1484,4 +1592,6 @@ void StVideo::mainLoop() {
             }
         }
     }
+
+    std::cout << __PRETTY_FUNCTION__ << ": EXIT\n";
 }

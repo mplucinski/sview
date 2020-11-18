@@ -600,6 +600,26 @@ bool StOutDistorted::create() {
 
         std::cout << "OpenHMD: Resolution " << hmd_w << " x " << hmd_h << std::endl;
 
+        float distortion_coeffs[4];
+        float aberr_scale[3];
+
+        ohmd_device_getf(hmd, OHMD_UNIVERSAL_DISTORTION_K, &(distortion_coeffs[0]));
+        ohmd_device_getf(hmd, OHMD_UNIVERSAL_ABERRATION_K, &(aberr_scale[0]));
+
+        float x = distortion_coeffs[3];
+        float y = distortion_coeffs[2];
+        float z = distortion_coeffs[1];
+        float w = distortion_coeffs[0];
+
+        myBarrelCoef = StGLVec4{x, y, z, w};
+
+        // TODO: aberr_scale
+
+/*  myBarrelCoef(1.0f, 0.22f, 0.24f, 0.041f), // 7 inches
+  //myBarrelCoef(1.0f, 0.18f, 0.115f, 0.0387f),
+  myChromAb(0.996f, -0.004f, 1.014f, 0.0f),
+  //myChromAb(1.0f, 0.0f, 1.0f, 0.0f),*/
+
         ohmd_device_settings_destroy(settings);
 
     }
@@ -1064,7 +1084,7 @@ void StOutDistorted::stglDraw() {
     const bool isStereoSource = StWindow::isStereoSource()
                              || myDevice == DEVICE_HMD
                              || params.MonoClone->getValue();
-    myIsStereoOn = isStereoSource
+    myIsStereoOn = (isStereoSource || myDevice == DEVICE_OPENHMD) // OpenHMD always renders stereo, even if it's the same image twice
                 && StWindow::isFullScreen()
                 && !myIsBroken;
 

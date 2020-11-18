@@ -36,6 +36,20 @@ typedef enum {
     ST_PLAYEVENT_NEXT,
 } StPlayEvent_t;
 
+static StString playEvent2str(const StPlayEvent_t e) {
+    switch(e){
+    case ST_PLAYEVENT_NONE:   return "ST_PLAYEVENT_NONE";
+    case ST_PLAYEVENT_RESET:  return "ST_PLAYEVENT_RESET";
+    case ST_PLAYEVENT_PLAY:   return "ST_PLAYEVENT_PLAY";
+    case ST_PLAYEVENT_STOP:   return "ST_PLAYEVENT_STOP";
+    case ST_PLAYEVENT_PAUSE:  return "ST_PLAYEVENT_PAUSE";
+    case ST_PLAYEVENT_RESUME: return "ST_PLAYEVENT_RESUME";
+    case ST_PLAYEVENT_SEEK:   return "ST_PLAYEVENT_SEEK";
+    case ST_PLAYEVENT_NEXT:   return "ST_PLAYEVENT_NEXT";
+    default: "<unknown>";
+    }
+}
+
 /**
  * This is a simple thread safe queue implementation
  * specialized for AVPacketClass

@@ -375,6 +375,8 @@ bool StPlayList::walkToPrev() {
 }
 
 bool StPlayList::walkToNext(const bool theToForce) {
+    std::cout << __PRETTY_FUNCTION__ << "(" << theToForce << ")" << std::endl;
+
     StMutexAuto anAutoLock(myMutex);
     if(myCurrent == NULL
     || (myToLoopSingle && !theToForce)) {

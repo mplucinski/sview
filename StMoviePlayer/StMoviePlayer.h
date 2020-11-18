@@ -407,6 +407,8 @@ class StMoviePlayer : public StApplication {
     bool                        myToCheckUpdates;
     bool                        myToCheckPoorOrient; //!< switch off orientation sensor with poor quality
 
+    bool checkViewSurfacePreselection = false;
+
     friend class StMoviePlayerGUI;
     friend class StMovieOpenDialog;
 

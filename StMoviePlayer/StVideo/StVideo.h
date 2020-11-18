@@ -33,6 +33,8 @@
 #include <StImage/StImageFile.h>
 #include <StSettings/StTranslations.h>
 
+#include <optional>
+
 // forward declarations
 class StSubQueue;
 
@@ -46,6 +48,7 @@ struct StMovieInfo {
     StFormat                 StInfoFileName; //!< source format detected from file name
     bool                     HasVideo;       //!< true if file contains video
     bool                     IsSavable;      //!< indicate that file can be saved without re-encoding
+
 
     StMovieInfo() : StInfoStream(StFormat_AUTO), StInfoFileName(StFormat_AUTO), HasVideo(false), IsSavable(false) {}
 
@@ -191,6 +194,7 @@ class StVideo {
      * Interrupt the playback and load current position in playlist.
      */
     ST_LOCAL void doLoadNext() {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         pushPlayEvent(ST_PLAYEVENT_NEXT);
     }
 
@@ -279,6 +283,11 @@ class StVideo {
 
     } params;
 
+    bool ReadyViewSurfacePreselection = false;
+    bool HasViewSurfacePreselection = false;
+    StViewSurface ViewSurfacePreselection;
+
+
         public: //! @name Signals
 
     /**
@@ -331,6 +340,7 @@ class StVideo {
 
     ST_LOCAL void pushPlayEvent(const StPlayEvent_t theEventId,
                                 const double        theSeekParam = 0.0) {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         if(theEventId == ST_PLAYEVENT_NEXT) {
             myEventMutex.lock();
                 myPlayEvent = theEventId;
@@ -440,7 +450,7 @@ class StVideo {
         }
     }
 
-        private: //! @name private fields
+      public://  private: //! @name private fields
 
     StMIMEList                    myMimesVideo;
     StMIMEList                    myMimesAudio;
